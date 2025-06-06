@@ -10,8 +10,8 @@ import (
 	"sync"
 	"time"
 
-	"ragflow_api/intenal/fileManagement/listdocs"
-	"ragflow_api/intenal/str"
+	"ragflow_api/internal/fileManagement/listdocs"
+	"ragflow_api/internal/str"
 )
 
 type DocParser struct {
@@ -52,18 +52,23 @@ func (p *DocParser) ParseZeroChunkDocs() error {
 
 			var documentIDs []string
 			for _, doc := range resp.Data.Docs {
-				if doc.ChunkCount == 0 {
+				if doc.ChunkCount == 0 && !isProcessingStatus(doc.Run) {
+					// ChunkCount 为 0 且不在解析中，视为新文档
 					documentIDs = append(documentIDs, doc.ID)
-					log.Printf("📌 dataset [%s] 发现未解析文档: %s", datasetID, doc.Name)
+					log.Printf("📌 dataset [%s] 发现未解析文档（ChunkCount == 0）: %s", datasetID, doc.Name)
+				} else if doc.ChunkCount > 0 && !isStableStatus(doc.Run) && !isProcessingStatus(doc.Run) {
+					// ChunkCount > 0 且状态不稳定且不在解析中，需要重新解析
+					documentIDs = append(documentIDs, doc.ID)
+					log.Printf("📌 dataset [%s] 发现需重新解析文档（状态: %s）: %s", datasetID, doc.Run, doc.Name)
 				}
 			}
 
 			if len(documentIDs) == 0 {
-				log.Printf("✅ dataset [%s] 所有文档均已解析，无需操作", datasetID)
+				log.Printf("✅ dataset [%s] 所有文档均已解析或状态正常，无需操作", datasetID)
 				return
 			}
 
-			log.Printf("📤 dataset [%s] 即将解析 %d 个未处理文档...", datasetID, len(documentIDs))
+			log.Printf("📤 dataset [%s] 即将解析 %d 个文档...", datasetID, len(documentIDs))
 			err = p.parseDocuments(datasetID, documentIDs)
 			if err != nil {
 				log.Printf("❌ dataset [%s] 文档解析失败: %v", datasetID, err)
@@ -90,6 +95,26 @@ func (p *DocParser) ParseZeroChunkDocs() error {
 	}
 
 	return nil
+}
+
+// isStableStatus 判断文档是否处于稳定状态（无需重新解析）
+func isStableStatus(status string) bool {
+	switch status {
+	case "DONE", "FAIL":
+		return true
+	default:
+		return false
+	}
+}
+
+// isProcessingStatus 判断文档是否处于解析过程中
+func isProcessingStatus(status string) bool {
+	switch status {
+	case "RUNNING", "PROCESSING", "WAITING", "PENDING":
+		return true
+	default:
+		return false
+	}
 }
 
 // parseDocuments 向 RagFlow 接口发送解析请求

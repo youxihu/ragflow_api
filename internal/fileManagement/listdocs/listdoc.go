@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"ragflow_api/intenal/str"
+	"ragflow_api/internal/str"
 )
 
 // DocLister 用于获取文档列表
@@ -164,7 +164,9 @@ func (l *DocLister) GetListResultByDatasetID(
 ) (*str.DocumentListResponse, error) {
 
 	url := fmt.Sprintf(
-		"http://192.168.0.43:9381/api/v1/datasets/%s/documents?page=%d&page_size=%d&orderby=%s&desc=%t&keywords=%s&id=%s&name=%s",
+		"http://%s:%d/api/v1/datasets/%s/documents?page=%d&page_size=%d&orderby=%s&desc=%t&keywords=%s&id=%s&name=%s",
+		l.cfg.RagFlow.Address,
+		l.cfg.RagFlow.Port,
 		datasetID,
 		page,
 		pageSize,
@@ -203,4 +205,41 @@ func (l *DocLister) GetListResultByDatasetID(
 	}
 
 	return &result, nil
+}
+
+// AreAllDatasetsDone 用于在远程主机解析后接收迁回回调=============================
+// 检查配置中所有 DatasetID 对应的数据集是否所有文档都已完成
+func (l *DocLister) AreAllDatasetsDone() (bool, error) {
+	for _, datasetID := range l.cfg.RagFlow.DatasetID {
+		log.Printf("🔍 正在检查 dataset [%s] 的文档状态...", datasetID)
+
+		resp, err := l.GetListResultByDatasetID(datasetID, 1, 30,
+			"create_time", true,
+			"", "", "")
+		if err != nil {
+			return false, fmt.Errorf("获取 dataset [%s] 文档列表失败: %v", datasetID, err)
+		}
+
+		if resp.Data.Total == 0 {
+			log.Printf("⚠️ dataset [%s] 中没有文档", datasetID)
+			continue
+		}
+
+		// 检查每个文档是否满足条件
+		for _, doc := range resp.Data.Docs {
+			if doc.ChunkCount == 0 {
+				log.Printf("⏳ dataset [%s] 存在分片数为 0 的文档: %s", datasetID, doc.Name)
+				return false, nil
+			}
+
+			if doc.Run != "DONE" && doc.Run != "FAIL" {
+				log.Printf("⏳ dataset [%s] 存在未达标文档: %s (状态: %s)", datasetID, doc.Name, doc.Run)
+				return false, nil
+			}
+		}
+	}
+
+	log.Println("✅ 所有文档满足条件（ChunkCount ≠ 0 且状态为 DONE 或 FAIL）")
+	fmt.Println("DOCUMENT_ALL_DONE=true")
+	return true, nil
 }

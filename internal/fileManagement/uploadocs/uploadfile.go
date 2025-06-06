@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"ragflow_api/intenal/str"
+	"ragflow_api/internal/str"
 	"time"
 )
 

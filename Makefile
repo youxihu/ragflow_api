@@ -1,34 +1,47 @@
-# 默认值：如果没有指定 APP_DIR，默认构建 uploadocs
-APP_DIR ?= parsedocs
-APP_NAME = $(APP_DIR)
-
-# 映射表：数字 -> 子目录名称
-DIR_MAP = \
-    1:listdocs \
-    2:parsedocs \
-    3:uploadocs
-
-# 根据用户输入的数字选择子目录
-ifeq ($(APP_DIR),)
-    # 如果没有直接指定 APP_DIR，检查是否有传入数字参数
-    ifneq ($(1),)
-        # 获取用户输入的数字
-        DIR_INDEX := $(1)
-        # 从映射表中查找对应的子目录
-        APP_DIR := $(word $(DIR_INDEX),$(subst :, ,$(value $(filter $(DIR_INDEX):,$(DIR_MAP)))))
-    endif
-endif
-
 .PHONY: build clean
 
-# 构建目标
+# 默认 build 提示信息
 build:
-	@echo "Building project in directory: $(APP_DIR)"
-	rm -rf ./bin
-	mkdir -p bin/
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o  ./bin/$(APP_NAME)  main.go
-	upx ./bin/*
+	@echo "需要指定构建编号"
+	@echo "1: 列出所有文件夹内文件信息"
+	@echo "2: 解析所有文件夹中未解析的文件"
+	@echo "3: 上传指定文件夹下的文件"
+	@echo "4: 判断是否全部解析完成"
+	@echo "5: 列出所有文件夹的ID"
+	@echo "例如: make build-1"
 
-# 清理目标
-clean:
-	rm -rf ./bin
+# 编号构建逻辑
+build-%:
+	@case '$*' in \
+		1) APP_DIR=internal/fileManagement/listdocs ;; \
+		2) APP_DIR=internal/fileManagement/parsedocs ;; \
+		3) APP_DIR=internal/fileManagement/uploadocs ;; \
+		4) APP_DIR=internal/fileManagement/arealldone ;; \
+		5) APP_DIR=internal/datasetManagement/listdatasets ;; \
+		*) echo "无效构建编号" ; exit 1 ;; \
+	esac && \
+	APP_NAME=$$(basename $$APP_DIR) && \
+	echo "Building project: $$APP_NAME from directory: $$APP_DIR" && \
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ./script/$$APP_NAME main.go && \
+	upx ./script/$$APP_NAME
+
+
+test:
+	@echo "需要指定测试编号"
+	@echo "1: go test -v -run TestAreAllDatasetsDone ragflow_api/internal/fileManagement/listdocs"
+	@echo "2: go test -v -run TestParse ragflow_api/internal/fileManagement/parsedocs"
+	@echo "3: go test -v -run TestUpload ragflow_api/internal/fileManagement/uploadocs"
+	@echo "4: go test -v -run TestList ragflow_api/internal/fileManagement/listdocs"
+	@echo "5: go test -v -run TestListSets ragflow_api/internal/datasetManagement/listdatasets"
+	@echo "例如:  make test-1"
+
+
+test-%:
+	@case '$*' in \
+		1) cd internal/fileManagement/listdocs && go test -v -run TestAreAllDatasetsDone ;; \
+		2) cd internal/fileManagement/parsedocs  && go test -v -run TestParse ;; \
+		3) cd internal/fileManagement/uploadocs  && go test -v -run TestUpload ;; \
+		4) cd internal/fileManagement/listdocs  && go test -v -run TestList ;; \
+		5) cd internal/datasetManagement/listdatasets&&  go test -v -run TestListSets ;;\
+		*) echo "无效选项" ;; \
+	esac

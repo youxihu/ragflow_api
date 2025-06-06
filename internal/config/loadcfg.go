@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"gopkg.in/yaml.v3"
 	"os"
-	"ragflow_api/intenal/str"
+	"ragflow_api/internal/str"
 )
 
 func LoadConfig(path string) (str.RagConf, error) {

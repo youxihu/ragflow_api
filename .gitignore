@@ -1,4 +1,9 @@
 .idea/
 .git/
 bin/
-docsparser
+
+script/arealldone
+script/parsedocs
+script/uploadocs
+script/listdocs
+script/listdatasets
