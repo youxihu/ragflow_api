@@ -2,8 +2,6 @@
 .git/
 bin/
 
-script/arealldone
-script/parsedocs
-script/uploadocs
-script/listdocs
-script/listdatasets
+# 忽略 script/ 及其子目录下的所有非 .sh 文件
+script/**
+!script/**/*.sh
