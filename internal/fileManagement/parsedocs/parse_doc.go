@@ -28,7 +28,7 @@ type ParseConfig struct {
 
 // 默认配置
 var DefaultParseConfig = ParseConfig{
-	BatchSize:   1,
+	BatchSize:   20,
 	MaxRetries:  3,
 	Timeout:     4 * time.Hour,
 	RetryWait:   10 * time.Second,

@@ -7,7 +7,7 @@ import (
 )
 
 func TestStopParsing(t *testing.T) {
-	cfg, err := config.LoadConfig("/home/youxihu/secret/aiops/rag_api/local.auth.yaml")
+	cfg, err := config.LoadConfig("/home/youxihu/secret/aiops/rag_api/youxihu.auth.yaml")
 	if err != nil {
 		log.Fatalf("加载配置失败: %v", err)
 	}
